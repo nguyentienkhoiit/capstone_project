@@ -1,0 +1,62 @@
+server:
+  port: 8080
+spring:
+  mvc:
+    dispatch-options-request: true
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: khointhe153249@fpt.edu.vn
+    password: tjnn gsoa lauz tevg
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: 278053914580-417rr81oaoejoc5gg1s5063885vnkh80.apps.googleusercontent.com
+            client-secret: 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
+  datasource:
+    driverClassName: com.mysql.jdbc.Driver
+    url: jdbc:mysql://103.161.178.66:3306/emss
+    username: lmms
+    password: KhongSharePass@123
+
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    generate-ddl: true
+    #    show-sql: true
+    properties:
+      hibernate:
+        #        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+    database: mysql
+
+application:
+  security:
+    jwt:
+      secret-key: 3111803aa629ccec119ed812fd787074c7a2eebf5696e9b9b2f6e45136598fb4
+      access-token:
+        expiration: 86400 # 1 day
+      refresh-token:
+        expiration: 172800 # 2 days
+  file:
+    upload:
+      root-path: src/main/resources/documents
+logging:
+  pattern:
+    console: "%green(%d{yyyy-MM-dd - HH:mm:ss})  %highlight(%-5level) --- %cyan(%logger{1.}) : %msg%n"
+    file: "%d{yyyy-MM-dd - HH:mm:ss}  %-5level [%thread] --- %logger{1.} : %msg%n"
+#  file:
+#    name: log-backend.txt
