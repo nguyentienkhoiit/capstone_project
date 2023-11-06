@@ -105,7 +105,6 @@ public class ResourceCriteria {
         params.forEach(nativeQuery::setParameter);
         TypedQuery<Resource> resourceTypedQuery = nativeQuery.unwrap(TypedQuery.class);
 
-        System.out.println(sql);
         resourceTypedQuery.setFirstResult((int) ((pageIndex - 1) * pageSize));
         resourceTypedQuery.setMaxResults(Math.toIntExact(pageSize));
         List<Resource> resourceList = resourceTypedQuery.getResultList();
@@ -117,7 +116,7 @@ public class ResourceCriteria {
                     }
                     return resource.getTabResourceType() == resourceMediaDTOFilter.getTabResourceType();
                 })
-                .filter(r -> checkPermissionResource.needCheckPermissionResource(userLoggedIn, r, PermissionResourceType.V))
+                .filter(checkPermissionResource::needCheckPermissionSearchResource)
                 .toList();
 
         long totalResource = resourceList.size();

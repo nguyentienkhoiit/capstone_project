@@ -4,8 +4,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class Constants {
-    public static final String HOST = "https://545c-137-59-42-22.ngrok-free.app";
-    public static final String HOST_SERVER = HOST+"/api/v1/resource/get-link";
+    public static final String HOST = "https://capstoneproject-production.up.railway.app";
+    public static final String HOST_SERVER = HOST + "/api/v1/resource/get-link";
     public static final String API_VERSION = "/api/v1";
     public static final Long DEFAULT_PAGE_SIZE = 9L;
     public static final Long DEFAULT_PAGE_INDEX = 1L;

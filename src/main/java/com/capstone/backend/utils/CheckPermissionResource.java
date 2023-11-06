@@ -50,4 +50,8 @@ public class CheckPermissionResource {
             } else return false;
         } else return resource.getVisualType() == VisualType.PUBLIC && resource.getApproveType() == ApproveType.ACCEPTED;
     }
+
+    public Boolean needCheckPermissionSearchResource(Resource resource) {
+        return resource.getVisualType() == VisualType.PUBLIC && resource.getApproveType() == ApproveType.ACCEPTED;
+    }
 }

@@ -3,7 +3,6 @@ package com.capstone.backend.service.impl;
 import com.capstone.backend.entity.*;
 import com.capstone.backend.entity.type.*;
 import com.capstone.backend.exception.ApiException;
-import com.capstone.backend.model.dto.comment.CommentDetailDTOResponse;
 import com.capstone.backend.model.dto.materials.DataMaterialsDTOResponse;
 import com.capstone.backend.model.dto.materials.MaterialsFilterDTORequest;
 import com.capstone.backend.model.dto.resource.*;
@@ -236,7 +235,6 @@ public class ResourceServiceImpl implements ResourceService {
 
         boolean isPermission = checkPermissionResource
                 .needCheckPermissionResource(userLoggedIn, document, PermissionResourceType.D);
-        System.out.println(isPermission);
         if (!isPermission || userLoggedIn == null)
             throw ApiException.forBiddenException(messageException.MSG_NO_PERMISSION);
 
@@ -473,6 +471,9 @@ public class ResourceServiceImpl implements ResourceService {
             Set<Long> resourceTagPresent = data.resource.getResourceTagList().stream()
                     .map(resourceTag -> resourceTag.getTag().getId())
                     .collect(Collectors.toSet());
+            log.info("old: {}", resourceTagOld);
+            log.info("new: {}", resourceTagNew);
+            log.info("present: {}", resourceTagPresent);
             if (resourceTagNew != resourceTagPresent) {
                 List<ResourceTag> listAddResourceTags = resourceTagNew.stream()
                         .filter(resourceTag -> !resourceTagOld.contains(resourceTag))
@@ -481,12 +482,19 @@ public class ResourceServiceImpl implements ResourceService {
                                 data.resource
                         ))
                         .toList();
+                log.info("tag add more: {}", listAddResourceTags);
+
+                List<Long> list = resourceTagOld.stream()
+                        .filter(resourceTag -> !resourceTagNew.contains(resourceTag))
+                        .toList();
+                log.info("list long delete: {}", list);
+
                 List<ResourceTag> listDeleteResourceTags = resourceTagOld.stream()
                         .filter(resourceTag -> !resourceTagNew.contains(resourceTag))
-                        .map(tagId -> resourceTagRepository.findByTagAndResource(tagId, data.resource.getId()))
+                        .map(tagId -> resourceTagRepository.findByTagAndResource(tagId, data.resource.getId(), true))
                         .toList();
-                listDeleteResourceTags.forEach(rt -> System.out.println(rt.getId()));
                 listDeleteResourceTags.forEach(rt -> resourceTagService.disableTagFromResource(rt.getId()));
+                resourceTagRepository.deleteAll(listDeleteResourceTags);
                 resourceTagRepository.saveAll(listAddResourceTags);
             }
         }
@@ -500,8 +508,21 @@ public class ResourceServiceImpl implements ResourceService {
         data.resource.setName(request.getName());
         data.resource.setDescription(request.getDescription());
         data.resource.setVisualType(request.getVisualType());
-
         data.resource = resourceRepository.save(data.resource);
         return true;
     }
+
+    public void saveToResourceTag(ResourceTag rt) {
+        if (rt != null) {
+            ResourceTag resourceTag = resourceTagRepository
+                    .findByTagAndResource(rt.getTag().getId(), rt.getResource().getId(), false);
+            if (resourceTag != null) {
+                resourceTag.setActive(true);
+                resourceTagRepository.save(resourceTag);
+            } else {
+                resourceTagRepository.save(rt);
+            }
+        }
+    }
+
 }

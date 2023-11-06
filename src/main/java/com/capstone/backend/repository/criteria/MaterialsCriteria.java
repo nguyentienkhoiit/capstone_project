@@ -146,7 +146,7 @@ public class MaterialsCriteria {
         resourceTypedQuery.setFirstResult((int) ((data.pageIndex - 1) * data.pageSize));
         resourceTypedQuery.setMaxResults(Math.toIntExact(data.pageSize));
         List<Resource> resourceList = resourceTypedQuery.getResultList().stream()
-                .filter(r -> checkPermissionResource.needCheckPermissionResource(userLoggedIn, r, PermissionResourceType.V))
+                .filter(checkPermissionResource::needCheckPermissionSearchResource)
                 .toList();
 
         data.totalResource = (Long) countQuery.getSingleResult();

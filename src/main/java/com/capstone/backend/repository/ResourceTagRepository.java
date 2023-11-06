@@ -6,11 +6,13 @@ import com.capstone.backend.entity.type.ResourceType;
 import com.capstone.backend.entity.type.TableType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+@Repository
 public interface ResourceTagRepository extends JpaRepository<ResourceTag, Long> {
 
     @Query("select rt.tag.name from ResourceTag rt where rt.resource.id = :resourceId and rt.active = true order by rt.tag.createdAt")
@@ -34,9 +36,6 @@ public interface ResourceTagRepository extends JpaRepository<ResourceTag, Long> 
     @Query("SELECT rt FROM ResourceTag rt WHERE rt.tableType=?1 AND rt.detailId=?2 AND rt.tag.id = ?3 AND rt.active=TRUE")
     public Optional<ResourceTag> findByTagIdAndByTableNameAndRowID(TableType tableType, long rowId, long tagId);
 
-    @Query("select rt from ResourceTag rt where rt.resource.id = :resourceId and rt.tag.id = :tagId and rt.active = true")
-    public ResourceTag findByTagAndResource(Long tagId, Long resourceId);
-
-    @Query("delete from ResourceTag rt where rt.id in (:listDeleteResourceTags)")
-    public void deleteResourceTag(List<Long> listDeleteResourceTags);
+    @Query("select rt from ResourceTag rt where rt.resource.id = :resourceId and rt.tag.id = :tagId and rt.active = :active")
+    public ResourceTag findByTagAndResource(Long tagId, Long resourceId, Boolean active);
 }
