@@ -16,7 +16,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ResourceMediaDTOFilter {
     List<Long> listTags;
-    String name;
+    String name = "";
     TabResourceType tabResourceType = TabResourceType.IMAGE;
     Long pageIndex = Constants.DEFAULT_PAGE_INDEX;
     Long pageSize = Constants.DEFAULT_PAGE_SIZE;

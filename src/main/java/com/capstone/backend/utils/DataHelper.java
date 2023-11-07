@@ -42,4 +42,10 @@ public class DataHelper {
             default -> MediaType.APPLICATION_OCTET_STREAM_VALUE;
         };
     }
+
+    public static String parseArray(Set<Long> numbers) {
+        String result = numbers.toString().replaceAll("[\\[\\]]", "").replaceAll(", ", ", ");
+        result = "(" + result + ")";
+        return result;
+    }
 }
