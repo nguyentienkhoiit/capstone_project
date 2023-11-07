@@ -184,6 +184,9 @@ public class ResourceCriteria {
             ResourceMediaDTOFilter resourceMediaDTOFilter
     ) {
 
+        resourceMediaDTOCriteriaList.forEach(System.out::println);
+        System.out.println(resourceMediaDTOFilter);
+
         User userLoggedIn = userHelper.getUserLogin();
         StringBuilder sql = new StringBuilder(" select r from Resource r where ");
         Map<String, Object> params = new HashMap<>();
@@ -240,7 +243,11 @@ public class ResourceCriteria {
             builder.append(" value ");
         }
 
-        sql.append(" and r.name like :name ");
+        if(!builder.isEmpty()) {
+            sql.append(" and ");
+        }
+
+        sql.append(" r.name like :name ");
         params.put("name", "%"+resourceMediaDTOFilter.getName()+"%");
 
 
