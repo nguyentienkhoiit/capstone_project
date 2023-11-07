@@ -154,7 +154,6 @@ public class MaterialsCriteria {
         if (data.totalResource % data.pageSize != 0) {
             data.totalPage++;
         }
-        System.out.println(data.totalResource);
 
         List<ResourceViewDTOResponse> resourceViewDTOResponses = resourceList.stream()
                 .map(resource -> {

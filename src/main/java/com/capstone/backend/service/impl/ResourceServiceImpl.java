@@ -28,6 +28,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.capstone.backend.utils.Constants.CREATOR_RESOURCE_PERMISSION;
 import static com.capstone.backend.utils.Constants.CREATOR_RESOURCE_PERMISSION_MESSAGE;
@@ -212,14 +213,41 @@ public class ResourceServiceImpl implements ResourceService {
                 .build();
     }
 
+    private Set<Long> getResourceIdsByCriteria(TableType tableType, Set<ResourceMediaDTOCriteria> criteriaList) {
+        return criteriaList.stream()
+                .filter(criteria -> criteria.getTableType() == tableType)
+                .map(ResourceMediaDTOCriteria::getDetailId)
+                .collect(Collectors.toSet());
+    }
+
     @Override
     public PagingResourceDTOResponse searchMediaResource(ResourceMediaDTOFilter resourceDTOFilter) {
-        Set<ResourceTag> resourceTags = resourceTagRepository
-                .findResourceTagByTagId(resourceDTOFilter.getListTags());
+        Set<ResourceMediaDTOCriteria> resourceMediaDTOCriteriaList = resourceTagRepository
+                .findResourceTagByTagId(resourceDTOFilter.getListTags())
+                .stream()
+                .map(ResourceMapper::toResourceMediaDTOCriteria)
+                .collect(Collectors.toSet());
 
-        Set<ResourceMediaDTOCriteria> resourceMediaDTOCriteriaList = resourceTags.stream()
-                .map(ResourceMapper::toResourceMediaDTOCriteria).collect(Collectors.toSet());
-        return resourceCriteria.searchMediaResource(resourceMediaDTOCriteriaList, resourceDTOFilter);
+        // Tạo một Map để lưu trữ các danh sách theo TableType
+        Map<TableType, Set<Long>> tableTypeToIdsMap = new HashMap<>();
+
+        // Sử dụng Map để gom nhóm các danh sách dựa trên TableType
+        for (TableType type : TableType.values()) {
+            Set<Long> ids = getResourceIdsByCriteria(type, resourceMediaDTOCriteriaList);
+            if (!ids.isEmpty()) {
+                tableTypeToIdsMap.put(type, ids);
+            }
+        }
+
+        // Tạo một danh sách duy nhất để lưu trữ tất cả các IDs
+        Set<Long> listResourceGrouped = new HashSet<>();
+
+        // Thêm tất cả các IDs vào danh sách duy nhất
+        for (Set<Long> ids : tableTypeToIdsMap.values()) {
+            listResourceGrouped.addAll(ids);
+        }
+
+        return resourceCriteria.searchMediaResource(listResourceGrouped, resourceDTOFilter);
     }
 
     @Override

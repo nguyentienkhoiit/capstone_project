@@ -20,7 +20,7 @@ public class Constants {
             "/configuration/ui", "/configuration/security", "/swagger-ui/**",
             "/webjars/**", "/swagger-ui.html", "/api/v1/resource/get-link/**",
             "/api/v1/resource/materials/**", "/api/v1/resource/medias/**",
-            "/api/v1/tags"
+            "/api/v1/resource/tags"
     };
     public static String CREATOR_RESOURCE_PERMISSION = "CDRUV";
     public static String CREATOR_RESOURCE_PERMISSION_MESSAGE = "Owner";

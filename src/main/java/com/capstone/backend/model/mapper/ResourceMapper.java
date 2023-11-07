@@ -39,6 +39,7 @@ public class ResourceMapper {
                 .point(resource.getPoint())
                 .name(resource.getName())
                 .isSave(isSave)
+                .resourceType(resource.getResourceType())
                 .build();
     }
 
