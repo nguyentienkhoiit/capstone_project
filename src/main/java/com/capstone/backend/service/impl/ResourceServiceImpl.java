@@ -3,6 +3,7 @@ package com.capstone.backend.service.impl;
 import com.capstone.backend.entity.*;
 import com.capstone.backend.entity.type.*;
 import com.capstone.backend.exception.ApiException;
+import com.capstone.backend.model.dto.comment.CommentDetailDTOResponse;
 import com.capstone.backend.model.dto.materials.DataMaterialsDTOResponse;
 import com.capstone.backend.model.dto.materials.MaterialsFilterDTORequest;
 import com.capstone.backend.model.dto.resource.*;
@@ -28,7 +29,6 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.capstone.backend.utils.Constants.CREATOR_RESOURCE_PERMISSION;
 import static com.capstone.backend.utils.Constants.CREATOR_RESOURCE_PERMISSION_MESSAGE;
@@ -59,165 +59,163 @@ public class ResourceServiceImpl implements ResourceService {
 
     private void saveToResourceTag(ResourceDTORequest request, Resource resource) {
         if (request.getTagList() != null) {
-            List<ResourceTag> resourceTagList = new ArrayList<>();
-            DataHelper.parseStringToLongSet(request.getTagList()).forEach(tag -> {
-                Tag tagObject = tagRepository.findById(tag)
-                        .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_TAG_NOT_FOUND));
-                ResourceTag resourceTag = ResourceTag.builder()
-                        .tag(tagObject)
-                        .resource(resource)
-                        .detailId(resource.getId())
-                        .tableType(TableType.resource_tbl)
-                        .active(true)
-                        .createdAt(LocalDateTime.now())
-                        .build();
-                resourceTagList.add(resourceTag);
-            });
+            Set<Long> tagIds = DataHelper.parseStringToLongSet(request.getTagList());
+            List<ResourceTag> resourceTagList = tagIds.stream()
+                    .map(tagId -> {
+                        Tag tagObject = tagRepository.findById(tagId)
+                                .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_TAG_NOT_FOUND));
+                        return ResourceTag.builder()
+                                .tag(tagObject)
+                                .resource(resource)
+                                .detailId(resource.getId())
+                                .tableType(TableType.resource_tbl)
+                                .active(true)
+                                .createdAt(LocalDateTime.now())
+                                .build();
+                    })
+                    .collect(Collectors.toList());
             resource.setResourceTagList(resourceTagList);
         }
     }
 
+    // =================================================================================================================
+
     @Override
     public List<ResourceDTOResponse> uploadResource(ResourceDTORequest request, MultipartFile[] files) {
-        List<ResourceDTOResponse> resourceDTOResponseList = new ArrayList<>();
-
-        //get list file processed
         List<FileDTOResponse> fileDTOResponseList = fileService.uploadMultiFile(files, request.getLessonId());
         Subject subject = subjectRepository.findByIdAndActiveTrue(request.getSubjectId())
                 .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_SUBJECT_NOT_FOUND));
 
-        Lesson lesson;
-        if (request.getLessonId() != null) {
-            lesson = lessonRepository
-                    .findById(request.getLessonId())
-                    .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_LESSON_NOT_FOUND));
-        } else {
-            lesson = null;
-        }
-        fileDTOResponseList.forEach(fileDTOResponse -> {
-            //check document or media
-            boolean status = ResourceType.getFeeList().stream()
-                    .anyMatch(rt -> fileDTOResponse.getFileExtension().equalsIgnoreCase(rt.toString()));
-            //if media will be free or document will have fee
-            Long pointResource = status ? Constants.POINT_RESOURCE : 0;
+        Lesson lesson = (request.getLessonId() != null)
+                ? lessonRepository.findById(request.getLessonId())
+                .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_LESSON_NOT_FOUND))
+                : null;
 
-            TabResourceType tabResourceType = TabResourceType
-                    .findByTabResourceType(fileDTOResponse.getResourceType());
-            Resource resource = Resource.builder()
-                    .name(request.getName())
-                    .description(request.getDescription())
-                    .resourceType(fileDTOResponse.getResourceType())
-                    .createdAt(LocalDateTime.now())
-                    .active(true)
-                    .approveType(ApproveType.UNACCEPTED)
-                    .visualType(VisualType.valueOf(request.getVisualType()))
-                    .thumbnailSrc(fileDTOResponse.getThumbnailSrc())
-                    .resourceSrc(fileDTOResponse.getResourceSrc())
-                    .point(pointResource)
-                    .size(fileDTOResponse.getSize())
-                    .lesson(lesson)
-                    .subject(subject)
-                    .author(userHelper.getUserLogin())
-                    .tabResourceType(tabResourceType)
-                    .build();
-            resource = resourceRepository.save(resource);
-            resourceDTOResponseList.add(ResourceMapper.toResourceDTOResponse(resource));
-            if (lesson == null) {
-                //save tag into resource tag table (search)
-                saveToResourceTag(request, resource);
-            }
-            //save resource table to database
-            resourceRepository.save(resource);
-            //save user permission resource
-            UserResourcePermission permission = UserResourcePermission.builder()
-                    .user(userHelper.getUserLogin())
-                    .resource(resource)
-                    .active(true)
-                    .createdAt(LocalDateTime.now())
-                    .permission(CREATOR_RESOURCE_PERMISSION)
-                    .build();
-            userResourcePermissionRepository.save(permission);
-        });
-        return resourceDTOResponseList;
+        return fileDTOResponseList.stream()
+                .map(fileDTOResponse -> {
+                    // Check document or media
+                    boolean isMedia = ResourceType.getFeeList().stream()
+                            .anyMatch(rt -> fileDTOResponse.getFileExtension().equalsIgnoreCase(rt.toString()));
+                    Long pointResource = isMedia ? Constants.POINT_RESOURCE : 0;
+
+                    TabResourceType tabResourceType = TabResourceType.findByTabResourceType(fileDTOResponse.getResourceType());
+                    Resource resource = Resource.builder()
+                            .name(request.getName())
+                            .description(request.getDescription())
+                            .resourceType(fileDTOResponse.getResourceType())
+                            .createdAt(LocalDateTime.now())
+                            .active(true)
+                            .approveType(ApproveType.UNACCEPTED)
+                            .visualType(VisualType.valueOf(request.getVisualType()))
+                            .thumbnailSrc(fileDTOResponse.getThumbnailSrc())
+                            .resourceSrc(fileDTOResponse.getResourceSrc())
+                            .point(pointResource)
+                            .size(fileDTOResponse.getSize())
+                            .lesson(lesson)
+                            .subject(subject)
+                            .author(userHelper.getUserLogin())
+                            .tabResourceType(tabResourceType)
+                            .build();
+
+                    resource = resourceRepository.save(resource);
+                    saveToResourceTag(request, resource);
+
+                    UserResourcePermission permission = UserResourcePermission.builder()
+                            .user(userHelper.getUserLogin())
+                            .resource(resource)
+                            .active(true)
+                            .createdAt(LocalDateTime.now())
+                            .permission(CREATOR_RESOURCE_PERMISSION)
+                            .build();
+                    userResourcePermissionRepository.save(permission);
+
+                    return ResourceMapper.toResourceDTOResponse(resource);
+                })
+                .collect(Collectors.toList());
     }
+
+    // =================================================================================================================
 
     @Override
     public ResourceDetailDTOResponse getResourceDetailById(Long resourceId) {
-        //user logged in
         User userLoggedIn = userHelper.getUserLogin();
-        //find a resource
         Resource resource = resourceRepository.findById(resourceId)
                 .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_RESOURCE_NOT_FOUND));
+
         ResourceDTOResponse resourceDTOResponse = ResourceMapper.toResourceDTOResponse(resource);
 
-        //check permission resource
-        boolean isPermission = checkPermissionResource
-                .needCheckPermissionResource(userLoggedIn, resource, PermissionResourceType.V);
-        if (!isPermission)
+        boolean isPermission = checkPermissionResource.needCheckPermissionResource(userLoggedIn, resource, PermissionResourceType.V);
+        if (!isPermission) {
             throw ApiException.forBiddenException(messageException.MSG_NO_PERMISSION);
-
-
-        //like or unlike
-        var isLike = userLoggedIn != null && userResourceRepository
-                .findUserResourceHasActionType(userLoggedIn.getId(), resourceId, ActionType.LIKE)
-                .isPresent();
-        //like or unlike
-        var isUnLike = userLoggedIn != null && userResourceRepository
-                .findUserResourceHasActionType(userLoggedIn.getId(), resourceId, ActionType.UNLIKE)
-                .isPresent();
-        //number of like
-        var numberOfLike = userResourceRepository
-                .countByActionTypeWithResource(ActionType.LIKE, resourceId);
-        //number of unlike
-        var numberOfUnLike = userResourceRepository
-                .countByActionTypeWithResource(ActionType.UNLIKE, resourceId);
-
-        //get list comment root
-        var commentDetailDTOResponseList = commentService
-                .getListCommentDetailDTOResponse(resourceId);
-
-        //get list tag name of this resource
-        var listTagNames = resourceTagRepository.findAllTagName(resourceId);
-
-        List<ResourceViewDTOResponse> listResourceRelates = new ArrayList<>();
-        //get status resource belongs or not belongs to a lesson
-        boolean status = ResourceType.getResourceByLesson().stream()
-                .anyMatch(rt -> rt.equals(resource.getResourceType()));
-        //get save whether user logged in saved
-        boolean isSave = userLoggedIn != null && userResourceRepository
-                .findUserResourceHasActionType(userLoggedIn.getId(), resourceId, ActionType.SAVED).isPresent();
-        if (status) {
-            listResourceRelates = resourceTagRepository
-                    .findAllResourceByLessonIdSameResourceType(resource.getResourceType(), resourceId, resource.getLesson().getId())
-                    .stream().map(r -> ResourceMapper.toResourceViewDTOResponse(r, isSave))
-                    .toList();
-        } else {
-            listResourceRelates = resourceTagRepository
-                    .findAllResourceByTagNameSameResourceType(resource.getResourceType(), resourceId, listTagNames)
-                    .stream().map(r -> ResourceMapper.toResourceViewDTOResponse(r, isSave))
-                    .toList();
         }
+
+        boolean isLike = isUserActionType(userLoggedIn, resourceId, ActionType.LIKE);
+        boolean isUnlike = isUserActionType(userLoggedIn, resourceId, ActionType.UNLIKE);
+        long numberOfLike = countUserActionType(ActionType.LIKE, resourceId);
+        long numberOfUnlike = countUserActionType(ActionType.UNLIKE, resourceId);
+
+        List<CommentDetailDTOResponse> commentDetailDTOResponseList = commentService.getListCommentDetailDTOResponse(resourceId);
+        List<String> listTagNames = resourceTagRepository.findAllTagName(resourceId);
+
+        List<ResourceViewDTOResponse> listResourceRelates = getResourceRelates(resource, userLoggedIn, listTagNames);
+
         User owner = resource.getAuthor();
 
         return ResourceDetailDTOResponse.builder()
                 .isLike(isLike)
-                .isUnlike(isUnLike)
+                .isUnlike(isUnlike)
                 .numberOfLike(numberOfLike)
-                .numberOfUnlike(numberOfUnLike)
+                .numberOfUnlike(numberOfUnlike)
                 .resourceDTOResponse(resourceDTOResponse)
                 .commentDetailDTOResponses(commentDetailDTOResponseList)
                 .listTagRelate(listTagNames)
                 .listResourceRelates(listResourceRelates)
-                .isSave(isSave)
+                .isSave(isUserActionType(userLoggedIn, resourceId, ActionType.SAVED))
                 .owner(UserMapper.toUserDTOResponse(owner))
                 .build();
     }
 
+    private boolean isUserActionType(User user, Long resourceId, ActionType actionType) {
+        return user != null && userResourceRepository.findUserResourceHasActionType(user.getId(), resourceId, actionType).isPresent();
+    }
+
+    private long countUserActionType(ActionType actionType, Long resourceId) {
+        return userResourceRepository.countByActionTypeWithResource(actionType, resourceId);
+    }
+
+    private List<ResourceViewDTOResponse> getResourceRelates(Resource resource, User userLoggedIn, List<String> listTagNames) {
+        if (ResourceType.getResourceByLesson().contains(resource.getResourceType())) {
+            return resourceTagRepository
+                    .findAllResourceByLessonIdSameResourceType(resource.getResourceType(), resource.getId(), resource.getLesson().getId())
+                    .stream()
+                    .map(r -> ResourceMapper.toResourceViewDTOResponse(r, isUserActionType(userLoggedIn, r.getId(), ActionType.SAVED)))
+                    .toList();
+        } else {
+            return resourceTagRepository
+                    .findAllResourceByTagNameSameResourceType(resource.getResourceType(), resource.getId(), listTagNames)
+                    .stream()
+                    .map(r -> ResourceMapper.toResourceViewDTOResponse(r, isUserActionType(userLoggedIn, r.getId(), ActionType.SAVED)))
+                    .toList();
+        }
+    }
+
+    // =================================================================================================================
+
     private Set<Long> getResourceIdsByCriteria(TableType tableType, Set<ResourceMediaDTOCriteria> criteriaList) {
-        return criteriaList.stream()
+        Set<Long> tableIds =  criteriaList.stream()
                 .filter(criteria -> criteria.getTableType() == tableType)
                 .map(ResourceMediaDTOCriteria::getDetailId)
                 .collect(Collectors.toSet());
+
+        switch (tableType) {
+            case class_tbl -> resourceRepository.findResourceIdClass(tableIds);
+            case book_series_tbl -> resourceRepository.findResourceIdBookSeries(tableIds);
+            case subject_tbl -> resourceRepository.findResourceIdSubject(tableIds);
+            case book_volume_tbl -> resourceRepository.findResourceIdBookVolume(tableIds);
+            case chapter_tbl -> resourceRepository.findResourceIdChapter(tableIds);
+            case lesson_tbl -> resourceRepository.findResourceIdLesson(tableIds);
+        }
+        return tableIds;
     }
 
     @Override
@@ -250,10 +248,14 @@ public class ResourceServiceImpl implements ResourceService {
         return resourceCriteria.searchMediaResource(listResourceGrouped, resourceDTOFilter);
     }
 
+    // =================================================================================================================
+
     @Override
     public DataMaterialsDTOResponse searchMaterials(MaterialsFilterDTORequest request) {
         return materialsCriteria.searchMaterials(request);
     }
+
+    // =================================================================================================================
 
     @Override
     public org.springframework.core.io.Resource downloadResource(String fileName) {
@@ -282,66 +284,74 @@ public class ResourceServiceImpl implements ResourceService {
         return resource;
     }
 
+    // =================================================================================================================
+
     @Override
     public Boolean shareResource(ResourceSharedDTORequest request) {
-        var userLoggedIn = userHelper.getUserLogin();
-        var ownerResource = userResourcePermissionRepository.getUserOwnerResource(request.getResourceId());
-        var resource = resourceRepository.findById(request.getResourceId())
+        User userLoggedIn = userHelper.getUserLogin();
+        Resource resource = resourceRepository.findById(request.getResourceId())
                 .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_RESOURCE_NOT_FOUND));
 
-        //check permission resource
-        boolean isPermission = checkPermissionResource
-                .needCheckPermissionResource(userLoggedIn, resource, PermissionResourceType.C);
-        if (!isPermission)
-            throw ApiException.forBiddenException(messageException.MSG_NO_PERMISSION);
-
-        //owner of resource can view
-        if (!Objects.equals(userLoggedIn.getId(), ownerResource.getId())) {
-            throw ApiException.internalServerException(messageException.MSG_NO_PERMISSION);
-        }
+        checkPermissionAndOwner(userLoggedIn, resource);
 
         resource.setVisualType(request.getVisualType());
         resource = resourceRepository.save(resource);
 
-        var userResourcePermissions = new ArrayList<>(userResourcePermissionRepository
+        List<Long> listUserIdShared = userResourcePermissionRepository
                 .findByResource(resource.getId(), userLoggedIn.getId()).stream()
-                .toList());
+                .map(upr -> upr.getUser().getId())
+                .toList();
 
-        var listUserIdShared = userResourcePermissions.stream().map(upr -> upr.getUser().getId()).toList();
-        var listUserIdShareNew = request.getUserShareIds();
+        List<Long> listUserIdShareNew = request.getUserShareIds();
 
+        List<Long> listAdded = listUserIdShareNew.stream().filter(e -> !listUserIdShared.contains(e)).toList();
+        List<Long> listDeleted = listUserIdShared.stream().filter(e -> !listUserIdShareNew.contains(e)).toList();
 
-        var listAdded = listUserIdShareNew.stream().filter(e -> !listUserIdShared.contains(e)).toList();
-        var listDeleted = listUserIdShared.stream().filter(e -> !listUserIdShareNew.contains(e)).toList();
-
-        //list user permission resource added
-        Resource finalResource = resource;
+        // Thêm quyền truy cập cho người dùng
         if (!listAdded.isEmpty()) {
-            var userResourcePermissionAdds = listAdded.stream()
-                    .map(e -> {
-                        User user = userRepository.findById(e)
-                                .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_USER_NOT_FOUND));
-                        return UserResourceMapper.toUserResourcePermission(user, finalResource);
-                    })
-                    .toList();
+            List<UserResourcePermission> userResourcePermissionAdds = addUserPermissions(listAdded, resource);
             userResourcePermissionRepository.saveAll(userResourcePermissionAdds);
         }
 
-        //list user permission resource deleted
+        // Xóa quyền truy cập của người dùng
         if (!listDeleted.isEmpty()) {
-            listDeleted.stream()
-                    .map(e -> {
-                        User user = userRepository.findById(e)
-                                .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_USER_NOT_FOUND));
-                        return userResourcePermissionRepository.findByUserAndResource(user, finalResource);
-                    })
-                    .forEach(e -> {
-                        assert e.orElse(null) != null;
-                        userResourcePermissionRepository.delete(e.orElse(null));
-                    });
+            deleteUserPermissions(listDeleted, resource);
         }
+
         return true;
     }
+
+    private void checkPermissionAndOwner(User user, Resource resource) {
+        if (user == null || !checkPermissionResource.needCheckPermissionResource(user, resource, PermissionResourceType.C)) {
+            throw ApiException.forBiddenException(messageException.MSG_NO_PERMISSION);
+        }
+
+        User ownerResource = userResourcePermissionRepository.getUserOwnerResource(resource.getId());
+        if (!Objects.equals(user.getId(), ownerResource.getId())) {
+            throw ApiException.internalServerException(messageException.MSG_NO_PERMISSION);
+        }
+    }
+
+    private List<UserResourcePermission> addUserPermissions(List<Long> userIds, Resource resource) {
+        return userIds.stream()
+                .map(userId -> {
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_USER_NOT_FOUND));
+                    return UserResourceMapper.toUserResourcePermission(user, resource);
+                })
+                .toList();
+    }
+
+    private void deleteUserPermissions(List<Long> userIds, Resource resource) {
+        userIds.forEach(userId -> {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_USER_NOT_FOUND));
+            userResourcePermissionRepository.findByUserAndResource(user, resource)
+                    .ifPresent(userResourcePermissionRepository::delete);
+        });
+    }
+
+    // =================================================================================================================
 
     @Override
     public ResourceSharedDTOResponse viewResourceShareById(Long resourceId) {
@@ -499,9 +509,6 @@ public class ResourceServiceImpl implements ResourceService {
             Set<Long> resourceTagPresent = data.resource.getResourceTagList().stream()
                     .map(resourceTag -> resourceTag.getTag().getId())
                     .collect(Collectors.toSet());
-            log.info("old: {}", resourceTagOld);
-            log.info("new: {}", resourceTagNew);
-            log.info("present: {}", resourceTagPresent);
             if (resourceTagNew != resourceTagPresent) {
                 List<ResourceTag> listAddResourceTags = resourceTagNew.stream()
                         .filter(resourceTag -> !resourceTagOld.contains(resourceTag))
@@ -510,12 +517,10 @@ public class ResourceServiceImpl implements ResourceService {
                                 data.resource
                         ))
                         .toList();
-                log.info("tag add more: {}", listAddResourceTags);
 
                 List<Long> list = resourceTagOld.stream()
                         .filter(resourceTag -> !resourceTagNew.contains(resourceTag))
                         .toList();
-                log.info("list long delete: {}", list);
 
                 List<ResourceTag> listDeleteResourceTags = resourceTagOld.stream()
                         .filter(resourceTag -> !resourceTagNew.contains(resourceTag))

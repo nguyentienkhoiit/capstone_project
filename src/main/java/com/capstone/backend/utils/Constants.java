@@ -7,7 +7,7 @@ public class Constants {
     public static final String HOST = "https://capstoneproject-production.up.railway.app";
     public static final String HOST_SERVER = HOST + "/api/v1/resource/get-link";
     public static final String API_VERSION = "/api/v1";
-    public static final Long DEFAULT_PAGE_SIZE = 9L;
+    public static final Long DEFAULT_PAGE_SIZE = 12L;
     public static final Long DEFAULT_PAGE_INDEX = 1L;
     public static final Long TOTAL_POINT_DEFAULT = 10L;
     public static final Long DEFAULT_VALUE = 1L;
