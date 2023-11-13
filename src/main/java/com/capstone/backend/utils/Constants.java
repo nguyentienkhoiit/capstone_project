@@ -4,7 +4,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class Constants {
-    public static final String HOST = "https://capstoneproject-production.up.railway.app";
+    public static final String HOST = "http://localhost:8080";
+    public static final String HOST_FRONT_END = "http://localhost:8081";
     public static final String HOST_SERVER = HOST + "/api/v1/resource/get-link";
     public static final String API_VERSION = "/api/v1";
     public static final Long DEFAULT_PAGE_SIZE = 12L;
@@ -20,7 +21,7 @@ public class Constants {
             "/configuration/ui", "/configuration/security", "/swagger-ui/**",
             "/webjars/**", "/swagger-ui.html", "/api/v1/resource/get-link/**",
             "/api/v1/resource/materials/**", "/api/v1/resource/medias/**",
-            "/api/v1/resource/tags"
+            "/api/v1/resource/tags", "/api/v1/resource/download/**"
     };
     public static String CREATOR_RESOURCE_PERMISSION = "CDRUV";
     public static String CREATOR_RESOURCE_PERMISSION_MESSAGE = "Owner";

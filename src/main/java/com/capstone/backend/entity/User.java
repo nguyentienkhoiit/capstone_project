@@ -76,6 +76,9 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     List<ConfirmationToken> confirmationTokenList;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    List<Token> tokens;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         Collection<SimpleGrantedAuthority> authorities = new ArrayList<>();

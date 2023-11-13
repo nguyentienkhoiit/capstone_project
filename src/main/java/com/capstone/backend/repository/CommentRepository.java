@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
-    @Query("select c from Comment c where c.resource.id = :resourceId and c.commentRoot.commentId is null order by c.createdAt desc")
+    @Query("select c from Comment c where c.resource.id = :resourceId and c.commentRoot.commentId is null order by c.createdAt asc")
     public List<Comment> findByResourceIdAndCommentRootIdIsNull(Long resourceId);
 
     @Query("select count(c) from Comment c where c.commentRoot.commentId = :commentId and c.resource.id = :resourceId")

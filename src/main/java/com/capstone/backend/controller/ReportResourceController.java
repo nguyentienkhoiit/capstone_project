@@ -1,6 +1,7 @@
 package com.capstone.backend.controller;
 
 import com.capstone.backend.model.dto.reportresource.ReportResourceDTORequest;
+import com.capstone.backend.model.dto.userresource.ReportResourceDTOFilter;
 import com.capstone.backend.service.ReportResourceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +28,13 @@ public class ReportResourceController {
     @Operation(summary = "Create report a resource")
     public ResponseEntity<?> createReportResource(@Valid @RequestBody ReportResourceDTORequest request) {
         return ResponseEntity.ok(reportResourceService.createReportComment(request));
+    }
+
+    @GetMapping("/display")
+    public ResponseEntity<?> viewSearchMyReportResource(
+            @ModelAttribute ReportResourceDTOFilter request
+    ) {
+        return ResponseEntity.ok(reportResourceService.viewSearchMyReportResource(request));
     }
 
 }

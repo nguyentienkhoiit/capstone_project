@@ -1,6 +1,5 @@
 package com.capstone.backend.model.dto.userresource;
 
-import com.capstone.backend.entity.type.ActionType;
 import com.capstone.backend.entity.type.ApproveType;
 import com.capstone.backend.entity.type.ResourceType;
 import com.capstone.backend.entity.type.VisualType;

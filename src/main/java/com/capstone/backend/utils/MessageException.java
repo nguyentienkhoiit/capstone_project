@@ -91,6 +91,9 @@ public class MessageException {
     @Value("${messages.exception.report-resource-reported}")
     public String MSG_REPORT_RESOURCE_REPORTED;
 
+    @Value("${messages.exception.report-resource-fail}")
+    public String MSG_REPORT_RESOURCE_FAIL;
+
     //-------------- class --------------
     @Value("${messages.exception.class-not-found}")
     public String MSG_CLASS_NOT_FOUND;

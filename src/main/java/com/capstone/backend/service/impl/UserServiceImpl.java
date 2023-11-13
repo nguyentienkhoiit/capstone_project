@@ -1,13 +1,16 @@
 package com.capstone.backend.service.impl;
 
 import com.capstone.backend.entity.User;
+import com.capstone.backend.entity.type.ActionType;
 import com.capstone.backend.exception.ApiException;
 import com.capstone.backend.model.dto.profle.ProfileDTOResponse;
 import com.capstone.backend.model.dto.profle.ProfileDTOUpdate;
+import com.capstone.backend.model.dto.user.PreviewInfoDTOResponse;
 import com.capstone.backend.model.dto.user.UserChangePasswordDTORequest;
 import com.capstone.backend.model.mapper.UserMapper;
 import com.capstone.backend.repository.ClassRepository;
 import com.capstone.backend.repository.UserRepository;
+import com.capstone.backend.repository.UserResourceRepository;
 import com.capstone.backend.service.FileService;
 import com.capstone.backend.service.UserService;
 import com.capstone.backend.utils.MessageException;
@@ -29,6 +32,7 @@ public class UserServiceImpl implements UserService {
     FileService fileService;
     PasswordEncoder passwordEncoder;
     MessageException messageException;
+    UserResourceRepository userResourceRepository;
 
     @Override
     public ProfileDTOResponse viewProfile() {
@@ -79,5 +83,15 @@ public class UserServiceImpl implements UserService {
         userLoggedIn.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userLoggedIn = userRepository.save(userLoggedIn);
         return true;
+    }
+
+    @Override
+    public PreviewInfoDTOResponse previewInfo() {
+        User user = userHelper.getUserLogin();
+        PreviewInfoDTOResponse response = UserMapper.toPreviewInfoDTOResponse(user);
+        response.setSavedCount(userResourceRepository.countUserResourceByType(user.getId(), ActionType.SAVED));
+        response.setLikeCount(userResourceRepository.countUserResourceByType(user.getId(), ActionType.LIKE));
+        response.setUploadCount(userResourceRepository.countResourceUploadedByUser(user.getId()));
+        return response;
     }
 }

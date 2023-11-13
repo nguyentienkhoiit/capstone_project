@@ -2,6 +2,7 @@ package com.capstone.backend.controller;
 
 import com.capstone.backend.model.dto.resource.ResourceDTORequest;
 import com.capstone.backend.model.dto.userresource.MyUserResourceDTOFilter;
+import com.capstone.backend.model.dto.userresource.ReportResourceDTOFilter;
 import com.capstone.backend.model.dto.userresource.UserResourceRequest;
 import com.capstone.backend.model.dto.userresource.UserResourceSavedOrSharedDTOFilter;
 import com.capstone.backend.service.ResourceService;
@@ -74,6 +75,4 @@ public class UserResourceController {
     ) {
         return ResponseEntity.ok(userResourceService.viewSearchMyUserResource(request));
     }
-
-
 }

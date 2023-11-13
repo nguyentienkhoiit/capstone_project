@@ -29,7 +29,7 @@ public class CommentController {
         return ResponseEntity.ok(commentService.createComment(request));
     }
 
-    @GetMapping("/{id}/more")
+    @GetMapping("/more/{id}")
     @Operation(summary = "See more reply of a comment")
     public ResponseEntity<?> seeMoreReplyComment(@Valid @PathVariable(name = "id") Long id) {
         return ResponseEntity.ok(commentService.seeMoreReplyComment(id));

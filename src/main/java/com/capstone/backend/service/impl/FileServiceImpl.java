@@ -7,6 +7,7 @@ import com.capstone.backend.model.dto.resource.FileDTOResponse;
 import com.capstone.backend.service.FileService;
 import com.capstone.backend.utils.ConvertResourceToImage;
 import com.capstone.backend.utils.DataHelper;
+import com.capstone.backend.utils.FileHelper;
 import com.capstone.backend.utils.MessageException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -48,17 +49,17 @@ public class FileServiceImpl implements FileService {
         }
     }
 
-    private String getThumbnailDocument(String path, String fileNameExtension) {
+    private String getThumbnailDocument(String path, String fileNameExtension, String filenameNoExtension) {
         String pdf = List.of(ResourceType.PDF).toString().toLowerCase();
         String slide = List.of(ResourceType.PPTX, ResourceType.PPT).toString().toLowerCase();
         String doc = List.of(ResourceType.DOC, ResourceType.DOCX).toString().toLowerCase();
 
         if (pdf.contains(fileNameExtension)) {
-            return convertResourceToImage.ConvertFirstPagePdfToImage(path, root);
+            return convertResourceToImage.ConvertFirstPagePdfToImage(path, root, filenameNoExtension);
         } else if (slide.contains(fileNameExtension)) {
-            return convertResourceToImage.ConvertFirstPageSlideToImage(path, root);
+            return convertResourceToImage.ConvertFirstPageSlideToImage(path, root, filenameNoExtension);
         } else if (doc.contains(fileNameExtension)) {
-            return convertResourceToImage.ConvertFirstPageDocToImage(path, root);
+            return convertResourceToImage.ConvertFirstPageDocToImage(path, root, filenameNoExtension);
         }
         return null;
     }
@@ -70,30 +71,24 @@ public class FileServiceImpl implements FileService {
             Long lessonId
     ) {
         init();
-        String messageError = messageException.MSG_FILE_SAVE_ERROR;
         try {
+            String filenameNoExtension = fileName.toLowerCase();
+            //get file name extension from file
+            String fileNameExtension = DataHelper.extractFileExtension(multipartFile.getOriginalFilename()).toLowerCase();
+            fileName = DataHelper.removeDiacritics(fileName).toLowerCase();
+            fileName = DataHelper.generateFilename(fileName, fileNameExtension);
+
             //get file name extension defined
             String fileNameExtensionList = Arrays.toString(ResourceType.values()).toLowerCase();
 
-            //get file name extension from file
-            String fileNameExtension = DataHelper.extractFileExtension(multipartFile.getOriginalFilename());
-
             if (lessonId == null && ResourceType.getResourceByLesson().toString().contains(fileNameExtension.toUpperCase())) {
-                messageError = messageException.MSG_FILE_TYPE_INVALID;
                 throw ApiException.badRequestException(messageException.MSG_FILE_TYPE_INVALID);
             }
 
             //only file name extension defined before
             if (!fileNameExtensionList.contains(fileNameExtension)) {
-                messageError = messageException.MSG_FILE_TYPE_INVALID;
-                throw ApiException.badRequestException(messageException
-                        .MSG_FILE_TYPE_INVALID
-                        .concat(" ")
-                        .concat(fileNameExtensionList));
+                throw ApiException.badRequestException(messageException.MSG_FILE_TYPE_INVALID);
             }
-
-            //concat new filename and extension
-            fileName = fileName.concat(".").concat(fileNameExtension);
 
             //save file name to folder
             FileCopyUtils.copy(
@@ -108,7 +103,7 @@ public class FileServiceImpl implements FileService {
             String thumbnailSrc = fileName;
 
             if (ResourceType.getFeeList().toString().contains(fileNameExtension.toUpperCase())) {
-                thumbnailSrc = getThumbnailDocument(path, fileNameExtension);
+                thumbnailSrc = getThumbnailDocument(path, fileNameExtension, DataHelper.removeDiacritics(filenameNoExtension));
             } else if (fileNameExtension.equalsIgnoreCase(ResourceType.MP3.toString())) {
                 thumbnailSrc = "thumbnail_mp3.jpg";
             } else if (fileNameExtension.equalsIgnoreCase(ResourceType.MP4.toString())) {
@@ -120,10 +115,25 @@ public class FileServiceImpl implements FileService {
                     .resourceType(ResourceType.valueOf(fileNameExtension.toUpperCase()))
                     .thumbnailSrc(thumbnailSrc)
                     .fileExtension(fileNameExtension)
+                    .originalFileName(fileName)
                     .build();
         } catch (Exception e) {
             throw ApiException.internalServerException(messageException.MSG_FILE_SAVE_ERROR);
         }
+    }
+
+    @Override
+    public List<FileDTOResponse> uploadMultiFile(
+            MultipartFile[] files,
+            Long lessonId,
+            String filenameOption
+    ) {
+        return Arrays.stream(files).map(file -> {
+            String filenameExtension = DataHelper.extractFileExtension(file.getOriginalFilename());
+            String filename = filenameOption == null ? DataHelper.extractFilename(file.getOriginalFilename())
+                    : filenameOption;
+            return uploadSingleFile(file, filename, lessonId);
+        }).toList();
     }
 
     @Override
@@ -135,21 +145,6 @@ public class FileServiceImpl implements FileService {
             return true;
         } catch (IOException e) {
             return false;
-        }
-    }
-
-    @Override
-    public List<FileDTOResponse> uploadMultiFile(MultipartFile[] files, Long lessonId) {
-        List<FileDTOResponse> fileDTOResponseList = new ArrayList<>();
-        try {
-            Arrays.asList(files).forEach(file -> {
-                String uuid = UUID.randomUUID().toString();
-                FileDTOResponse fileDTOResponse = uploadSingleFile(file, uuid, lessonId);
-                fileDTOResponseList.add(fileDTOResponse);
-            });
-            return fileDTOResponseList;
-        } catch (Exception e) {
-            throw ApiException.internalServerException(messageException.MSG_FILE_SAVE_ERROR);
         }
     }
 

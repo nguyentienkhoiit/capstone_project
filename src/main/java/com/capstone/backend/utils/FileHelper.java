@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class FileHelper {
 
@@ -18,10 +19,10 @@ public class FileHelper {
             BufferedReader bufferedReader = new BufferedReader(fileReader);
             String text;
             while ((text = bufferedReader.readLine()) != null) {
-                if (content.toLowerCase().contains(text.toLowerCase())) {
-                    System.out.println(text);
-                    return true;
-                }
+                String finalText = text;
+                boolean invalid = Arrays.stream(content.split("\\s+"))
+                        .anyMatch(t -> t.equalsIgnoreCase(finalText));
+                if (invalid) return true;
             }
             bufferedReader.close();
         } catch (IOException e) {

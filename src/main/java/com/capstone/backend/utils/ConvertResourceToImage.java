@@ -36,18 +36,18 @@ public class ConvertResourceToImage {
      * @param folder   name of folder
      * @return link of thumbnail image
      */
-    public String ConvertFirstPagePdfToImage(String pathName, Path folder) {
-        String uuid = UUID.randomUUID().toString();
+    public String ConvertFirstPagePdfToImage(String pathName, Path folder, String filenameNoExtension) {
+        String filename = DataHelper.generateFilename(filenameNoExtension, "png");
         File newFile = new File(pathName);
         PDDocument pdfDocument = null;
         try {
             pdfDocument = PDDocument.load(newFile);
             PDFRenderer pdfRenderer = new PDFRenderer(pdfDocument);
             BufferedImage img = pdfRenderer.renderImage(0);
-            String targetSrc = String.valueOf(folder.resolve(uuid + ".png"));
+            String targetSrc = String.valueOf(folder.resolve(filename));
             ImageIO.write(img, "JPEG", new File(targetSrc));
             pdfDocument.close();
-            return uuid + ".png";
+            return filename;
         } catch (IOException e) {
             throw ApiException.internalServerException(messageException.MSG_FILE_CONVERT_ERROR);
         }
@@ -60,8 +60,8 @@ public class ConvertResourceToImage {
      * @param folder   name of folder
      * @return link of thumbnail image
      */
-    public String ConvertFirstPageSlideToImage(String pathName, Path folder) {
-        String uuid = UUID.randomUUID().toString();
+    public String ConvertFirstPageSlideToImage(String pathName, Path folder, String filenameNoExtension) {
+        String filename = DataHelper.generateFilename(filenameNoExtension, "png");
         try {
             //Create a Presentation instance
             Presentation presentation = new Presentation();
@@ -71,9 +71,9 @@ public class ConvertResourceToImage {
             ISlide slide = presentation.getSlides().get(0);
             //Save each slide as PNG image
             BufferedImage image = slide.saveAsImage();
-            String targetSrc = String.valueOf(folder.resolve(uuid + ".png"));
+            String targetSrc = String.valueOf(folder.resolve(filename));
             ImageIO.write(image, "PNG", new File(targetSrc));
-            return uuid + ".png";
+            return filename;
         } catch (Exception e) {
             throw ApiException.internalServerException(messageException.MSG_FILE_CONVERT_ERROR);
         }
@@ -86,7 +86,8 @@ public class ConvertResourceToImage {
      * @param folder   name of folder
      * @return link of thumbnail image
      */
-    public String ConvertFirstPageDocToImage(String pathName, Path folder) {
+    public String ConvertFirstPageDocToImage(String pathName, Path folder, String filenameNoExtension) {
+        String filename = DataHelper.generateFilename(filenameNoExtension, "png");
         String uuid = UUID.randomUUID().toString();
         // load document
         Document doc = null;
@@ -96,9 +97,9 @@ public class ConvertResourceToImage {
             var options = new ImageSaveOptions(SaveFormat.PNG);
             // Save page as PNG
             options.setPageSet(new PageSet(0));
-            String targetSrc = String.valueOf(folder.resolve(uuid + ".png"));
+            String targetSrc = String.valueOf(folder.resolve(filename));
             doc.save(targetSrc, options);
-            return uuid + ".png";
+            return filename;
         } catch (Exception e) {
             throw ApiException.internalServerException(messageException.MSG_FILE_CONVERT_ERROR);
         }

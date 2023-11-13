@@ -13,10 +13,14 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.stereotype.Component;
 
+import static com.capstone.backend.utils.Constants.API_VERSION;
 import static com.capstone.backend.utils.Constants.LIST_PERMIT_ALL;
 
 @Configuration
@@ -27,26 +31,25 @@ public class SecurityConfiguration {
     AuthenticationProvider authenticationProvider;
     JwtAuthenticationFilter jwtAuthenticationFilter;
     JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    LogoutHandler logoutHandler;
 
     @Bean
-    @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // We don't need CSRF for this example
         http.csrf().disable().cors().and()
-                // dont authenticate this particular request
                 .authorizeRequests().antMatchers(LIST_PERMIT_ALL).permitAll()
-                .antMatchers("/api/v1/**").authenticated().
-                // all other requests need to be authenticated
-                        anyRequest().permitAll().and().
-                // make sure we use stateless session; session won't be used to
-                // store user's state.
-                        exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint).and().sessionManagement()
+                .antMatchers("/api/v1/**").authenticated()
+                .anyRequest().permitAll().and()
+                .exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint).and().sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
-                .authenticationProvider(authenticationProvider);
-
-        // Add a filter to validate the tokens with every request
-        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .logout()
+                .logoutUrl(API_VERSION + "/auth/logout")
+                .addLogoutHandler(logoutHandler)
+                .logoutSuccessHandler((
+                        request, response, authentication) -> SecurityContextHolder.clearContext()
+                );
         return http.build();
     }
 }

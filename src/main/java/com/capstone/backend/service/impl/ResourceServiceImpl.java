@@ -82,7 +82,7 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Override
     public List<ResourceDTOResponse> uploadResource(ResourceDTORequest request, MultipartFile[] files) {
-        List<FileDTOResponse> fileDTOResponseList = fileService.uploadMultiFile(files, request.getLessonId());
+        List<FileDTOResponse> fileDTOResponseList = fileService.uploadMultiFile(files, request.getLessonId(), request.getName());
         Subject subject = subjectRepository.findByIdAndActiveTrue(request.getSubjectId())
                 .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_SUBJECT_NOT_FOUND));
 
@@ -99,8 +99,16 @@ public class ResourceServiceImpl implements ResourceService {
                     Long pointResource = isMedia ? Constants.POINT_RESOURCE : 0;
 
                     TabResourceType tabResourceType = TabResourceType.findByTabResourceType(fileDTOResponse.getResourceType());
+
+                    String resourceName;
+                    if (request.getName() == null) {
+                        resourceName = DataHelper.extractFilename(fileDTOResponse.getOriginalFileName());
+                    }
+                    else {
+                        resourceName = request.getName().trim();
+                    }
                     Resource resource = Resource.builder()
-                            .name(request.getName())
+                            .name(resourceName)
                             .description(request.getDescription())
                             .resourceType(fileDTOResponse.getResourceType())
                             .createdAt(LocalDateTime.now())
@@ -202,7 +210,7 @@ public class ResourceServiceImpl implements ResourceService {
     // =================================================================================================================
 
     private Set<Long> getResourceIdsByCriteria(TableType tableType, Set<ResourceMediaDTOCriteria> criteriaList) {
-        Set<Long> tableIds =  criteriaList.stream()
+        Set<Long> tableIds = criteriaList.stream()
                 .filter(criteria -> criteria.getTableType() == tableType)
                 .map(ResourceMediaDTOCriteria::getDetailId)
                 .collect(Collectors.toSet());
@@ -484,7 +492,7 @@ public class ResourceServiceImpl implements ResourceService {
             if (file.length > 1) {
                 throw ApiException.badRequestException("Choose only one file");
             }
-            fileDTOResponse = fileService.uploadMultiFile(file, request.getLessonId()).get(0);
+            fileDTOResponse = fileService.uploadMultiFile(file, request.getLessonId(), "").get(0);
             data.resource.setResourceSrc(fileDTOResponse.getResourceSrc());
             data.resource.setThumbnailSrc(fileDTOResponse.getThumbnailSrc());
             data.resource.setResourceType(fileDTOResponse.getResourceType());

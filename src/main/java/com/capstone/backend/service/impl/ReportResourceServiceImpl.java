@@ -5,9 +5,12 @@ import com.capstone.backend.entity.Resource;
 import com.capstone.backend.entity.User;
 import com.capstone.backend.exception.ApiException;
 import com.capstone.backend.model.dto.reportresource.ReportResourceDTORequest;
+import com.capstone.backend.model.dto.userresource.PagingUserResourceDTOResponse;
+import com.capstone.backend.model.dto.userresource.ReportResourceDTOFilter;
 import com.capstone.backend.repository.ReportResourceRepository;
 import com.capstone.backend.repository.ResourceRepository;
 import com.capstone.backend.repository.UserRepository;
+import com.capstone.backend.repository.criteria.UserResourceCriteria;
 import com.capstone.backend.service.ReportResourceService;
 import com.capstone.backend.utils.FileHelper;
 import com.capstone.backend.utils.MessageException;
@@ -17,6 +20,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +30,7 @@ public class ReportResourceServiceImpl implements ReportResourceService {
     ResourceRepository resourceRepository;
     ReportResourceRepository reportResourceRepository;
     MessageException messageException;
+    UserResourceCriteria userResourceCriteria;
 
     @Override
     public Boolean createReportComment(ReportResourceDTORequest request) {
@@ -45,6 +50,10 @@ public class ReportResourceServiceImpl implements ReportResourceService {
                 .resource(resource)
                 .build();
 
+        if(Objects.equals(request.getReporterId(), reporter.getId())) {
+            throw ApiException.badRequestException(messageException.MSG_REPORT_RESOURCE_FAIL);
+        }
+
         ReportResource reportResourceExist = reportResourceRepository
                 .findByReporterIdActive(request.getReporterId())
                 .orElse(null);
@@ -52,5 +61,10 @@ public class ReportResourceServiceImpl implements ReportResourceService {
             reportResource = reportResourceRepository.save(reportResource);
         else throw ApiException.badRequestException(messageException.MSG_REPORT_RESOURCE_REPORTED);
         return true;
+    }
+
+    @Override
+    public PagingUserResourceDTOResponse viewSearchMyReportResource(ReportResourceDTOFilter request) {
+        return userResourceCriteria.viewSearchMyReportResource(request);
     }
 }

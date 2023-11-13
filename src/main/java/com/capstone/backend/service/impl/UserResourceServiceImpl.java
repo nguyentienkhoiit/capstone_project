@@ -5,10 +5,7 @@ import com.capstone.backend.entity.User;
 import com.capstone.backend.entity.UserResource;
 import com.capstone.backend.entity.type.ActionType;
 import com.capstone.backend.exception.ApiException;
-import com.capstone.backend.model.dto.userresource.MyUserResourceDTOFilter;
-import com.capstone.backend.model.dto.userresource.PagingUserResourceDTOResponse;
-import com.capstone.backend.model.dto.userresource.UserResourceRequest;
-import com.capstone.backend.model.dto.userresource.UserResourceSavedOrSharedDTOFilter;
+import com.capstone.backend.model.dto.userresource.*;
 import com.capstone.backend.repository.ResourceRepository;
 import com.capstone.backend.repository.UserRepository;
 import com.capstone.backend.repository.UserResourceRepository;
@@ -23,6 +20,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -51,8 +49,12 @@ public class UserResourceServiceImpl implements UserResourceService {
 
     @Override
     public Boolean actionResource(UserResourceRequest request) {
+        User userLoggedIn = userHelper.getUserLogin();
         Resource resource = resourceRepository.findById(request.getResourceId())
                 .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_RESOURCE_NOT_FOUND));
+        if(Objects.equals(userLoggedIn.getId(), resource.getAuthor().getId())) {
+            throw ApiException.badRequestException("Action fail here");
+        }
         UserResource userResource = UserResource.builder()
                 .user(userHelper.getUserLogin())
                 .actionType(ActionType.valueOf(request.getActionType()))
@@ -61,7 +63,6 @@ public class UserResourceServiceImpl implements UserResourceService {
                 .active(true)
                 .build();
 
-        User userLoggedIn = userHelper.getUserLogin();
         if (request.getActionType().equalsIgnoreCase(ActionType.LIKE.toString())) {
             findAndDeleteUserResourceExist(userLoggedIn, request.getResourceId(), ActionType.UNLIKE);
             userResource = userResourceRepository.save(userResource);

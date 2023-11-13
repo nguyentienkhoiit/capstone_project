@@ -3,6 +3,7 @@ package com.capstone.backend.security.jwt;
 import com.capstone.backend.entity.type.MethodType;
 import com.capstone.backend.entity.type.ResourceType;
 import com.capstone.backend.model.CustomError;
+import com.capstone.backend.repository.TokenRepository;
 import com.capstone.backend.repository.UserRolePermissionRepository;
 import com.capstone.backend.utils.Constants;
 import com.capstone.backend.utils.MessageException;
@@ -45,6 +46,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     UserDetailsService userDetailsService;
     UserRolePermissionRepository userRolePermissionRepository;
     MessageException messageException;
+    TokenRepository tokenRepository;
 
     @Override
     protected void doFilterInternal(
@@ -52,7 +54,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        //get url from link api
         String url = request.getRequestURI();
         var data = new Object() {
             final String path = getPath(url);
@@ -73,7 +74,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             } else responseToClient(response, messageException.MSG_BEARER_NOT_FOUND);
             return;
         }
-
         //get role from jwt
         String[] roles;
         jwt = authHeader.split(" ")[1].trim();
@@ -85,10 +85,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         //check permission by role from database
         boolean isPermission = Arrays.stream(roles).anyMatch(role -> {
-            log.info("role: {}", role);
             return (userRolePermissionRepository.needCheckPermission(data.path, data.methodType, role) != null);
         });
-        log.info("permission: {}", isPermission);
+        log.info("Permission: {}", isPermission);
         if (!isPermission) {
             responseToClient(response, messageException.MSG_NO_PERMISSION);
             return;
@@ -97,7 +96,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         username = jwtService.extractUsername(jwt);
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-            if (jwtService.isTokenValid(jwt, userDetails)) {
+            var isTokenValid = tokenRepository.findByToken(jwt)
+                    .map(t -> !t.getExpired() && !t.getRevoked())
+                    .orElse(false);
+
+            if (jwtService.isTokenValid(jwt, userDetails) && isTokenValid) {
                 Collection<SimpleGrantedAuthority> authorities = new ArrayList<>();
                 Arrays.stream(roles).forEach(role -> {
                     authorities.add(new SimpleGrantedAuthority(role));

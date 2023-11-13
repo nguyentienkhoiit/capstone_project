@@ -18,7 +18,7 @@ public class UserHelper {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof UserDetails) {
             String username = ((UserDetails) principal).getUsername();
-            return userRepository.findByUsernameOrEmail(username)
+            return userRepository.findByUsernameOrEmailActive(username)
                     .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_USER_NOT_FOUND));
         }
         return null;

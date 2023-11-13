@@ -17,4 +17,5 @@ public class FileDTOResponse {
     ResourceType resourceType;
     Long size;
     String fileExtension;
+    String originalFileName;
 }

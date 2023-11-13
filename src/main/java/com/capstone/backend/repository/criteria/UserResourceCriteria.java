@@ -7,14 +7,11 @@ import com.capstone.backend.entity.type.ActionType;
 import com.capstone.backend.entity.type.ApproveType;
 import com.capstone.backend.entity.type.VisualType;
 import com.capstone.backend.exception.ApiException;
-import com.capstone.backend.model.dto.userresource.MyUserResourceDTOFilter;
-import com.capstone.backend.model.dto.userresource.PagingUserResourceDTOResponse;
-import com.capstone.backend.model.dto.userresource.UserResourceDTOResponse;
-import com.capstone.backend.model.dto.userresource.UserResourceSavedOrSharedDTOFilter;
+import com.capstone.backend.model.dto.userresource.*;
 import com.capstone.backend.model.mapper.UserResourceMapper;
 import com.capstone.backend.repository.UserRepository;
 import com.capstone.backend.repository.UserResourcePermissionRepository;
-import com.capstone.backend.repository.UserResourceRepository;
+import com.capstone.backend.utils.Constants;
 import com.capstone.backend.utils.MessageException;
 import com.capstone.backend.utils.UserHelper;
 import lombok.AccessLevel;
@@ -25,6 +22,7 @@ import org.springframework.stereotype.Repository;
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
 import javax.persistence.TypedQuery;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -222,11 +220,8 @@ public class UserResourceCriteria {
                             UserResourcePermission permission = userResourcePermissionRepository
                                     .findByUserAndResource(user, resource)
                                     .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_USER_RESOURCE_NOT_FOUND));
-
                             userResourceDTOResponse.setIsUpdate(permission.getPermission().contains("U"));
-
                             userResourceDTOResponse.setIsShare(resource.getApproveType() == ApproveType.ACCEPTED);
-
                             userResourceDTOResponse.setIsDelete(true);
                             return userResourceDTOResponse;
                         }
@@ -236,7 +231,87 @@ public class UserResourceCriteria {
         return PagingUserResourceDTOResponse.builder()
                 .totalElement(totalResource)
                 .totalPage(totalPage)
-                .data(userResourceDTOResponses)
+                .data(assignNumber(userResourceDTOResponses))
+                .build();
+    }
+
+    public List<UserResourceDTOResponse> assignNumber(List<UserResourceDTOResponse> userResourceDTOResponses) {
+        Map<String, Long> countMap = new HashMap<>();
+
+        return userResourceDTOResponses.stream()
+                .peek(userResourceDTOResponse -> {
+                    String name = userResourceDTOResponse.getResourceName();
+                    String nameIgnoreCase = userResourceDTOResponse.getResourceName().toLowerCase();
+                    Long count = countMap.getOrDefault(nameIgnoreCase, 1L);
+                    countMap.put(name, count + 1);
+                    userResourceDTOResponse.setResourceName(name + "(" + count + ")");
+                }).toList();
+    }
+
+    public PagingUserResourceDTOResponse viewSearchMyReportResource(ReportResourceDTOFilter request) {
+        Map<String, Object> params = new HashMap<>();
+        User user = userHelper.getUserLogin();
+        StringBuilder sql = new StringBuilder("select rr.resource from ReportResource rr where rr.active = true " +
+                "and rr.resource.active = true and rr.resource.author.id = :userId");
+        params.put("userId", user.getId());
+
+        if (request.getTabResourceType() != null) {
+            sql.append(" and rr.resource.tabResourceType = :tabResourceType ");
+            params.put("tabResourceType", request.getTabResourceType());
+        }
+
+        if (request.getResourceName() != null) {
+            sql.append(" and rr.resource.name like :name ");
+            params.put("name", "%" + request.getResourceName() + "%");
+        }
+
+        if (request.getApproveType() != null) {
+            sql.append(" and rr.resource.approveType = :approveType ");
+            params.put("approveType", request.getApproveType());
+        }
+
+        if (request.getVisualType() != null) {
+            sql.append(" and rr.resource.visualType = :visualType ");
+            params.put("visualType", request.getVisualType());
+        }
+
+        sql.append(" order by rr.resource.createdAt asc ");
+
+        Query countQuery = em.createQuery(sql.toString().replace("select rr.resource", "select count(rr.resource.id)"));
+
+        Long pageIndex = request.getPageIndex() == null ? Constants.DEFAULT_PAGE_INDEX : request.getPageIndex();
+        Long pageSize = request.getPageSize() == null ? Constants.DEFAULT_PAGE_SIZE : request.getPageSize();
+
+        TypedQuery<Resource> resourceTypedQuery = em.createQuery(sql.toString(), Resource.class);
+
+        params.forEach((k, v) -> {
+            resourceTypedQuery.setParameter(k, v);
+            countQuery.setParameter(k, v);
+        });
+
+        //paging
+        resourceTypedQuery.setFirstResult((int) ((pageIndex - 1) * pageSize));
+        resourceTypedQuery.setMaxResults(Math.toIntExact(pageSize));
+        List<Resource> resources = resourceTypedQuery.getResultList();
+
+        Long totalResource = (Long) countQuery.getSingleResult();
+        long totalPage = totalResource / pageSize;
+        if (totalResource % pageSize != 0) {
+            totalPage++;
+        }
+
+        List<UserResourceDTOResponse> userResourceDTOResponses = resources.stream()
+                .map(resource -> UserResourceMapper.toUserResourceDTOResponse(
+                        resource,
+                        userRepository.findUsernameByUserId(resource.getAuthor().getId())
+                    )
+                )
+                .toList();
+
+        return PagingUserResourceDTOResponse.builder()
+                .totalElement(totalResource)
+                .totalPage(totalPage)
+                .data(assignNumber(userResourceDTOResponses))
                 .build();
     }
 }

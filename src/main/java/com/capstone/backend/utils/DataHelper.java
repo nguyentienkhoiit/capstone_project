@@ -2,6 +2,8 @@ package com.capstone.backend.utils;
 
 import org.springframework.http.MediaType;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -20,7 +22,7 @@ public class DataHelper {
     public static String removeDiacritics(String input) {
         String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
         Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
-        return pattern.matcher(normalized).replaceAll("");
+        return pattern.matcher(normalized).replaceAll("").replace("đ", "d");
     }
 
     public static String extractFileExtension(String fileName) {
@@ -29,6 +31,14 @@ public class DataHelper {
                     .replace(".", "");
         }
         return "";
+    }
+
+    public static String extractFilename(String filename) {
+        return filename.split("\\.")[0];
+    }
+
+    public static String concatExtension(String filename, String extension) {
+        return filename.concat(".").concat(extension);
     }
 
     public static String getContentType(String fileType) {
@@ -47,5 +57,12 @@ public class DataHelper {
         String result = numbers.toString().replaceAll("[\\[\\]]", "").replaceAll(", ", ", ");
         result = "(" + result + ")";
         return result;
+    }
+
+    public static String generateFilename(String filename, String extension) {
+        String name = filename.concat("-").concat(String.valueOf(System.currentTimeMillis()))
+                .concat(".").concat(extension);
+        name = URLEncoder.encode(name, StandardCharsets.UTF_8).replace("+", "-");
+        return name;
     }
 }

@@ -34,7 +34,8 @@ public class AuthenticationController {
     }
 
     @PostMapping("forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody UserEmailDTORequest request) {
+    @Operation(summary = "Forgot password to send mail")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody UserEmailDTORequest request) {
         return ResponseEntity.ok(authenticationService.forgotPassword(request));
     }
 
@@ -46,6 +47,6 @@ public class AuthenticationController {
 
     @PostMapping("submit-forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody UserForgotPasswordDTORequest request) {
-        return ResponseEntity.ok(authenticationService.changePassword(request));
+        return ResponseEntity.ok(authenticationService.changePasswordForgot(request));
     }
 }

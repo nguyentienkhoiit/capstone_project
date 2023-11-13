@@ -9,7 +9,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface RoleRepository extends JpaRepository<Role, Long> {
-
     @Query("select ur.role from UserRole ur where ur.user = :user and ur.active = true and ur.role.active = true")
     public List<Role> findAllByUserAndActive(User user);
+
+    public Optional<Role> findByIdAndActiveTrue(Long roleId);
 }

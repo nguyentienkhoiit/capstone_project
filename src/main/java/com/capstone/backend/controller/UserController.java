@@ -25,4 +25,9 @@ public class UserController {
     ) {
         return ResponseEntity.ok(userService.changePassword(request));
     }
+
+    @GetMapping("/preview")
+    public ResponseEntity<?> previewInfo() {
+        return ResponseEntity.ok(userService.previewInfo());
+    }
 }

@@ -9,6 +9,7 @@ import com.capstone.backend.model.dto.register.RegisterDTOResponse;
 import com.capstone.backend.model.dto.register.RegisterDTOUpdate;
 import com.capstone.backend.model.dto.role.RoleDTODisplay;
 import com.capstone.backend.model.dto.role.RoleDTOResponse;
+import com.capstone.backend.model.dto.user.PreviewInfoDTOResponse;
 import com.capstone.backend.model.dto.user.UserDTOResponse;
 import com.capstone.backend.utils.Constants;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -95,6 +96,16 @@ public class UserMapper {
                 .createdAt(user.getCreatedAt())
                 .classId(classId)
                 .roleDTOResponses(roleDTOResponses)
+                .build();
+    }
+
+    public static PreviewInfoDTOResponse toPreviewInfoDTOResponse(User user) {
+        return PreviewInfoDTOResponse.builder()
+                .userId(user.getId())
+                .fullName(user.getFirstname()+" "+user.getLastname())
+                .schoolName(user.getSchool())
+                .avatar(HOST_SERVER + "/" + user.getAvatar())
+                .username(user.getUsername())
                 .build();
     }
 }

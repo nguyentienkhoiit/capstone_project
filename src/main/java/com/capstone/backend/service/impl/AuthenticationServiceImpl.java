@@ -1,9 +1,7 @@
 package com.capstone.backend.service.impl;
 
-import com.capstone.backend.entity.ConfirmationToken;
-import com.capstone.backend.entity.Role;
-import com.capstone.backend.entity.User;
-import com.capstone.backend.entity.UserRole;
+import com.capstone.backend.entity.*;
+import com.capstone.backend.entity.type.TokenType;
 import com.capstone.backend.exception.ApiException;
 import com.capstone.backend.model.dto.EmailInfo;
 import com.capstone.backend.model.dto.authentication.AuthenticationDTORequest;
@@ -11,19 +9,13 @@ import com.capstone.backend.model.dto.authentication.AuthenticationDTOResponse;
 import com.capstone.backend.model.dto.register.RegisterDTORequest;
 import com.capstone.backend.model.dto.register.RegisterDTOResponse;
 import com.capstone.backend.model.dto.register.RegisterDTOUpdate;
-import com.capstone.backend.model.dto.role.RoleDTODisplay;
-import com.capstone.backend.model.dto.role.RoleDTOResponse;
 import com.capstone.backend.model.dto.user.UserEmailDTORequest;
 import com.capstone.backend.model.dto.user.UserForgotPasswordDTORequest;
-import com.capstone.backend.model.mapper.RoleMapper;
 import com.capstone.backend.model.mapper.UserMapper;
-import com.capstone.backend.repository.ConfirmTokenRepository;
-import com.capstone.backend.repository.RoleRepository;
-import com.capstone.backend.repository.UserRepository;
+import com.capstone.backend.repository.*;
 import com.capstone.backend.security.jwt.JwtService;
 import com.capstone.backend.service.AuthenticationService;
 import com.capstone.backend.service.ConfirmationTokenService;
-import com.capstone.backend.utils.Constants;
 import com.capstone.backend.utils.EmailHandler;
 import com.capstone.backend.utils.EmailHtml;
 import com.capstone.backend.utils.MessageException;
@@ -41,7 +33,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 
 import static com.capstone.backend.utils.Constants.*;
@@ -60,6 +51,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     MessageException messageException;
     ConfirmTokenRepository confirmTokenRepository;
     EmailHtml emailHtml;
+    TokenRepository tokenRepository;
+    UserRoleRepository userRoleRepository;
 
     private void authenticate(String username, String password) throws Exception {
         try {
@@ -73,7 +66,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     private AuthenticationDTOResponse buildDTOAuthenticationResponse(User user) {
         Collection<SimpleGrantedAuthority> authorities = new ArrayList<>();
-        Set<UserRole> set = user.getUserRoleList();
+        Set<UserRole> set = userRoleRepository.getUserRoleByActiveAndUser(user);
         set.forEach(s -> authorities.add(new SimpleGrantedAuthority(s.getRole().getName())));
         var accessToken = jwtService.generateToken(user, authorities);
         return AuthenticationDTOResponse.builder()
@@ -83,16 +76,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public AuthenticationDTOResponse login(AuthenticationDTORequest request) throws Exception {
-        var user = userRepository.findByUsernameOrEmail(request.getEmail())
+        var user = userRepository.findByUsernameOrEmailActive(request.getEmail())
                 .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_USER_NOT_FOUND));
         authenticate(user.getEmail(), request.getPassword());
-        if (!user.getActive())
-            throw ApiException.unAuthorizedException(messageException.MSG_USER_UNAUTHORIZED);
+        saveUserToken(user);
         return buildDTOAuthenticationResponse(user);
     }
 
     public UserRole addRoleToUser(User user, Long roleId) {
-        Role role = roleRepository.findById(roleId)
+        Role role = roleRepository.findByIdAndActiveTrue(roleId)
                 .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_ROLE_NOT_FOUND));
         return UserRole.builder()
                 .role(role)
@@ -102,12 +94,37 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .build();
     }
 
+    private void revokeAllUserTokens(User user) {
+        var validTokens = tokenRepository.findAlValidTokenByUser(user.getId());
+        if(validTokens.isEmpty()) return;
+        validTokens.forEach(t -> {
+            t.setExpired(true);
+            t.setRevoked(true);
+        });
+        tokenRepository.saveAll(validTokens);
+    }
+
+    @Override
+    public void saveUserToken(User user) {
+        revokeAllUserTokens(user);
+        var jwtToken = buildDTOAuthenticationResponse(user).getAccessToken();
+        var token = Token.builder()
+                .user(user)
+                .token(jwtToken)
+                .tokenType(TokenType.BEARER)
+                .revoked(false)
+                .expired(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        token = tokenRepository.save(token);
+    }
+
     @Override
     public RegisterDTOResponse register(RegisterDTORequest request) {
-        if (userRepository.findByUsernameOrEmail(request.getEmail()).isPresent()) {
+        if (userRepository.findByUsernameOrEmailActive(request.getEmail()).isPresent()) {
             throw ApiException.badRequestException(messageException.MSG_USER_EMAIL_EXISTED);
         }
-        if (userRepository.findByUsernameOrEmail(request.getUsername()).isPresent()) {
+        if (userRepository.findByUsernameOrEmailActive(request.getUsername()).isPresent()) {
             throw ApiException.badRequestException(messageException.MSG_USER_USERNAME_EXISTED);
         }
         User user = UserMapper.toUser(request, passwordEncoder);
@@ -123,6 +140,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
         User user = userRepository.findById(request.getId()).orElseThrow();
         user = userRepository.save(UserMapper.toUser(request, user));
+
+        saveUserToken(user);
 
         //todo: create token send link to gmail
         String token = confirmationTokenService.generateTokenEmail(user);
@@ -144,7 +163,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public String forgotPassword(UserEmailDTORequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByUsernameOrEmailActive(request.getEmail())
                 .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_USER_NOT_FOUND));
 
         //todo: create token send link to gmail
@@ -164,7 +183,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
-    public Boolean changePassword(UserForgotPasswordDTORequest request) {
+    public Boolean changePasswordForgot(UserForgotPasswordDTORequest request) {
         ConfirmationToken confirmationToken = confirmTokenRepository.findByToken(request.getToken())
                 .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_TOKEN_NOT_FOUND));
 
@@ -173,7 +192,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         User user = userRepository
-                .findByEmail(confirmationToken.getUser().getEmail())
+                .findByUsernameOrEmailActive(confirmationToken.getUser().getEmail())
                 .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_USER_NOT_FOUND));
 
         if (!request.getNewPassword().equals(request.getConfirmationPassword())) {
@@ -185,6 +204,4 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         user = userRepository.save(user);
         return true;
     }
-
-
 }

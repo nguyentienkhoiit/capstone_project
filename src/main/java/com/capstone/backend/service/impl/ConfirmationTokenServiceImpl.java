@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static com.capstone.backend.utils.Constants.HOST_FRONT_END;
+
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -70,7 +72,7 @@ public class ConfirmationTokenServiceImpl implements ConfirmationTokenService {
         if (expiredAt.isBefore(LocalDateTime.now())) {
             throw ApiException.badRequestException(messageException.MSG_TOKEN_EXPIRED);
         }
-
-        return token;
+        //link front-end
+        return HOST_FRONT_END+"/auth/forgot?token="+token;
     }
 }

@@ -1,12 +1,9 @@
 package com.capstone.backend.controller;
 
 import com.capstone.backend.exception.ApiException;
-import com.capstone.backend.model.dto.materials.MaterialFilterProtectDTORequest;
 import com.capstone.backend.model.dto.materials.MaterialsFilterDTORequest;
 import com.capstone.backend.model.dto.resource.*;
 import com.capstone.backend.model.dto.tag.TagSuggestDTORequest;
-import com.capstone.backend.model.mapper.MaterialsMapper;
-import com.capstone.backend.service.FileService;
 import com.capstone.backend.service.ResourceService;
 import com.capstone.backend.utils.DataHelper;
 import com.capstone.backend.utils.MessageException;
@@ -24,8 +21,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
-
-import java.util.List;
 
 import static com.capstone.backend.utils.Constants.API_VERSION;
 
