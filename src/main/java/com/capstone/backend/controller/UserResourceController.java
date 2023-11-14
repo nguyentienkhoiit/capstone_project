@@ -52,7 +52,7 @@ public class UserResourceController {
         return ResponseEntity.ok(userResourceService.viewSearchUserResourceShared(request));
     }
 
-    @DeleteMapping("/display-shared/{id}")
+    @DeleteMapping("/shared/{id}")
     public ResponseEntity<?> deleteSharedResource(@PathVariable Long id) {
         return ResponseEntity.ok(userResourceService.deleteSharedResource(id));
     }
@@ -64,7 +64,7 @@ public class UserResourceController {
         return ResponseEntity.ok(userResourceService.viewSearchUserResourceSaved(request));
     }
 
-    @DeleteMapping("/display-saved/{id}")
+    @DeleteMapping("/saved/{id}")
     public ResponseEntity<?> deleteSavedResource(@PathVariable Long id) {
         return ResponseEntity.ok(userResourceService.deleteSavedResource(id));
     }

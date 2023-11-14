@@ -1,5 +1,6 @@
 package com.capstone.backend.model.dto.userresource;
 
+import com.capstone.backend.entity.type.ActionType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -22,9 +23,9 @@ public class UserResourceRequest {
     Long resourceId;
 
     @Schema(description = "Action type must be choose [LIKE, UNLIKE, SAVED, UNSAVED]", example = "LIKE")
-    @NotBlank(message = "Action type is mandatory")
-    @Pattern(regexp = "(LIKE|UNLIKE|SAVED|UNSAVED)",
-            message = "Action type must be choose [LIKE, UNLIKE, SAVED, UNSAVED]")
-    String actionType;
+//    @NotBlank(message = "Action type is mandatory")
+//    @Pattern(regexp = "(LIKE|UNLIKE|SAVED|UNSAVED)",
+//            message = "Action type must be choose [LIKE, UNLIKE, SAVED, UNSAVED]")
+    ActionType actionType;
 
 }

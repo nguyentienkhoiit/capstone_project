@@ -11,6 +11,7 @@ import java.util.Optional;
 
 public interface UserResourcePermissionRepository extends JpaRepository<UserResourcePermission, Long> {
 
+    @Query("select urp from UserResourcePermission urp where urp.user = :user and urp.resource = :resource and urp.active = true")
     public Optional<UserResourcePermission> findByUserAndResource(User user, Resource resource);
 
     @Query("select urp from UserResourcePermission urp where urp.user.id != :userId and" +
@@ -20,4 +21,8 @@ public interface UserResourcePermissionRepository extends JpaRepository<UserReso
     @Query("select urp.resource.author from UserResourcePermission urp where urp.resource.id = :resource")
     public User getUserOwnerResource(Long resource);
 
+    @Query("select urp from UserResourcePermission urp where urp.user = :user " +
+            "and urp.resource = :resource and urp.active = true " +
+            "and urp.permission like '%D%V%' ")
+    public Optional<UserResourcePermission> findByUserAndResourceAndPermission(User user, Resource resource);
 }

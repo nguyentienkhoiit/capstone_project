@@ -3,14 +3,14 @@ package com.capstone.backend.service.impl;
 import com.capstone.backend.entity.Resource;
 import com.capstone.backend.entity.User;
 import com.capstone.backend.entity.UserResource;
+import com.capstone.backend.entity.UserResourcePermission;
 import com.capstone.backend.entity.type.ActionType;
 import com.capstone.backend.exception.ApiException;
 import com.capstone.backend.model.dto.userresource.*;
 import com.capstone.backend.repository.ResourceRepository;
-import com.capstone.backend.repository.UserRepository;
+import com.capstone.backend.repository.UserResourcePermissionRepository;
 import com.capstone.backend.repository.UserResourceRepository;
 import com.capstone.backend.repository.criteria.UserResourceCriteria;
-import com.capstone.backend.service.FileService;
 import com.capstone.backend.service.UserResourceService;
 import com.capstone.backend.utils.MessageException;
 import com.capstone.backend.utils.UserHelper;
@@ -20,7 +20,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Objects;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -31,20 +31,27 @@ public class UserResourceServiceImpl implements UserResourceService {
     UserHelper userHelper;
     MessageException messageException;
     UserResourceCriteria userResourceCriteria;
+    UserResourcePermissionRepository userResourcePermissionRepository;
 
-    private void findAndDeleteUserResourceExist(User userLoggedIn, Long resourceId, ActionType actionType) {
-        userResourceRepository.findUserResourceHasActionType(
+    private Boolean findUserResourceHasActionType(User userLoggedIn, Long resourceId, ActionType actionType) {
+        Optional<?> optional = userResourceRepository.findUserResourceHasActionType(
                 userLoggedIn.getId(),
                 resourceId,
                 actionType
-        ).ifPresent(
-                userResourceExist -> userResourceRepository
-                        .deleteUserResourceHasActionType(
-                                userLoggedIn.getId(),
-                                resourceId,
-                                actionType
-                        )
         );
+        return optional.isPresent();
+    }
+
+    private void findAndDeleteUserResourceExist(User userLoggedIn, Long resourceId, ActionType actionType) {
+        Optional<UserResource> optional = userResourceRepository.findUserResourceHasActionType(
+                userLoggedIn.getId(),
+                resourceId,
+                actionType
+        );
+
+        if (optional.isPresent()) {
+            userResourceRepository.deleteUserResourceHasActionType(userLoggedIn.getId(), resourceId, actionType);
+        }
     }
 
     @Override
@@ -52,29 +59,32 @@ public class UserResourceServiceImpl implements UserResourceService {
         User userLoggedIn = userHelper.getUserLogin();
         Resource resource = resourceRepository.findById(request.getResourceId())
                 .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_RESOURCE_NOT_FOUND));
-        if(Objects.equals(userLoggedIn.getId(), resource.getAuthor().getId())) {
-            throw ApiException.badRequestException("Action fail here");
-        }
         UserResource userResource = UserResource.builder()
                 .user(userHelper.getUserLogin())
-                .actionType(ActionType.valueOf(request.getActionType()))
+                .actionType(request.getActionType())
                 .createdAt(LocalDateTime.now())
                 .resource(resource)
                 .active(true)
                 .build();
 
-        if (request.getActionType().equalsIgnoreCase(ActionType.LIKE.toString())) {
+        if (request.getActionType() == ActionType.LIKE) {
             findAndDeleteUserResourceExist(userLoggedIn, request.getResourceId(), ActionType.UNLIKE);
-            userResource = userResourceRepository.save(userResource);
-        } else if (request.getActionType().equalsIgnoreCase(ActionType.UNLIKE.toString())) {
+            if (!findUserResourceHasActionType(userLoggedIn, request.getResourceId(), ActionType.LIKE)) {
+                userResource = userResourceRepository.save(userResource);
+            }
+        } else if (request.getActionType() == ActionType.UNLIKE) {
             findAndDeleteUserResourceExist(userLoggedIn, request.getResourceId(), ActionType.LIKE);
-            userResource = userResourceRepository.save(userResource);
-        } else if (request.getActionType().equalsIgnoreCase(ActionType.SAVED.toString())) {
+            if (!findUserResourceHasActionType(userLoggedIn, request.getResourceId(), ActionType.UNLIKE)) {
+                userResource = userResourceRepository.save(userResource);
+            }
+        } else if (request.getActionType() == ActionType.SAVED) {
             findAndDeleteUserResourceExist(userLoggedIn, request.getResourceId(), ActionType.UNSAVED);
-            userResource = userResourceRepository.save(userResource);
-        } else if (request.getActionType().equalsIgnoreCase(ActionType.UNSAVED.toString())) {
+            if (!findUserResourceHasActionType(userLoggedIn, request.getResourceId(), ActionType.SAVED)) {
+                userResource = userResourceRepository.save(userResource);
+            }
+        } else if (request.getActionType() == ActionType.UNSAVED) {
             findAndDeleteUserResourceExist(userLoggedIn, request.getResourceId(), ActionType.SAVED);
-        } else if (request.getActionType().equalsIgnoreCase(ActionType.DOWNLOAD.toString())) {
+        } else if (request.getActionType() == ActionType.DOWNLOAD) {
             userResource = userResourceRepository.save(userResource);
         }
         return true;
@@ -106,7 +116,14 @@ public class UserResourceServiceImpl implements UserResourceService {
     }
 
     @Override
-    public Boolean deleteSharedResource(Long id) {
-        return null;
+    public Boolean deleteSharedResource(Long resourceId) {
+        User user = userHelper.getUserLogin();
+        Resource resource = resourceRepository.findById(resourceId)
+                .orElseThrow(() -> ApiException.notFoundException(messageException.MSG_RESOURCE_NOT_FOUND));
+        UserResourcePermission userResourcePermission = userResourcePermissionRepository
+                .findByUserAndResourceAndPermission(user, resource)
+                .orElseThrow(() -> ApiException.badRequestException("user resource permission is not found"));
+        userResourcePermissionRepository.delete(userResourcePermission);
+        return true;
     }
 }

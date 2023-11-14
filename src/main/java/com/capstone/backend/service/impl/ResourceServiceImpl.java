@@ -285,7 +285,7 @@ public class ResourceServiceImpl implements ResourceService {
         } else throw ApiException.forBiddenException(messageException.MSG_FILE_DOWNLOAD_ERROR);
 
         boolean action = userResourceService.actionResource(UserResourceRequest.builder()
-                .actionType(String.valueOf(ActionType.DOWNLOAD))
+                .actionType(ActionType.DOWNLOAD)
                 .resourceId(document.getId())
                 .build());
         if (!action) throw ApiException.badRequestException(messageException.MSG_INTERNAL_SERVER_ERROR);
